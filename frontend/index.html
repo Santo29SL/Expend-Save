@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expend & Save</title>
+    <!-- Tailwind CSS (via PostCSS) -->
+    <link rel="stylesheet" href="./styles.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Force sharp edges globally, in case shadow DOM or other elements bleed */
+        * { border-radius: 0 !important; }
+        
+        /* Custom RSS Ticker Animation */
+        .rss-ticker {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            background-color: #f3f4f6; /* gray-100 */
+            border-bottom: 2px solid #84cc16; /* lime-500 */
+        }
+        .rss-ticker-content {
+            display: inline-block;
+            padding-left: 100%;
+            animation: ticker 50s linear infinite; /* Slowed down from 25s */
+        }
+        .rss-ticker-content:hover {
+            animation-play-state: paused;
+        }
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+        
+        /* Modal Animation for "show down" requirement */
+        .modal-slide-down {
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideDown {
+            0% { opacity: 0; transform: translateY(-30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 font-sans min-h-screen flex flex-col">
+
+    <!-- RSS Feed Ticker Top Bar (Globally visible or specific to pages based on requirement) -->
+    <div id="rss-ticker-bar" class="rss-ticker py-2 text-sm text-gray-700 font-semibold border-b-2 border-lime-500">
+        <div class="rss-ticker-content flex space-x-12" id="rss-container">
+            <span>Loading RBI Tips & Financial Advice...</span>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="flex-1 flex flex-col w-full h-full">
+
+        <!-- AUTH VIEW (Login/Signup) -->
+        <div id="auth-view" class="flex-1 flex items-center justify-center p-4 bg-gray-50 bg-opacity-50">
+            <div class="w-full max-w-md bg-white border-2 border-lime-500 p-8 shadow-[8px_8px_0px_0px_rgba(132,204,22,1)]">
+                
+                <div class="text-center mb-10">
+                    <h1 class="text-4xl font-black text-gray-900 tracking-tighter uppercase">Expend<span class="text-lime-500">&</span>Save</h1>
+                    <p class="text-gray-500 mt-2 font-medium">Ready to save today..!!!</p>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Username</label>
+                        <input type="text" id="login-username" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Password</label>
+                        <input type="password" id="login-password" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                    </div>
+                    <button type="submit" class="w-full py-3 px-4 bg-lime-500 hover:bg-lime-600 text-white font-bold uppercase tracking-widest transition-colors border-2 border-lime-500 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] active:shadow-none active:translate-y-1 active:translate-x-1">
+                        Login
+                    </button>
+                    <div class="text-center mt-6">
+                        <button type="button" id="show-register" class="text-sm font-bold text-gray-600 hover:text-lime-600 uppercase underline transition-colors">Create an account</button>
+                    </div>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" class="space-y-6 hidden">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Username</label>
+                        <input type="text" id="reg-username" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 uppercase mb-2">Password</label>
+                        <input type="password" id="reg-password" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Monthly Salary (INR)</label>
+                            <input type="number" id="reg-salary" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Target Savings</label>
+                            <input type="number" id="reg-savings" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-3 px-4 bg-lime-500 hover:bg-lime-600 text-white font-bold uppercase tracking-widest transition-colors border-2 border-lime-500 shadow-[4px_4px_0px_0px_rgba(17,24,39,1)] active:shadow-none active:translate-y-1 active:translate-x-1">
+                        Sign Up
+                    </button>
+                    <div class="text-center mt-6">
+                        <button type="button" id="show-login" class="text-sm font-bold text-gray-600 hover:text-lime-600 uppercase underline transition-colors">Back to Login</button>
+                    </div>
+                </form>
+
+                <div id="auth-error" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mt-6 hidden" role="alert">
+                    <p class="font-bold">Error</p>
+                    <p id="auth-error-msg" class="text-sm">Something went wrong.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboard-view" class="flex-1 flex flex-col hidden bg-gray-50">
+            <!-- Navigation Bar -->
+            <nav class="bg-white border-b-2 border-gray-200 shadow-sm sticky top-0 z-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between h-16">
+                        <!-- Branding & Links -->
+                        <div class="flex">
+                            <div class="flex-shrink-0 flex items-center border-r-2 border-gray-200 pr-6 mr-6">
+                                <span class="text-2xl font-black text-gray-900 tracking-tighter uppercase pointer-events-none">E<span class="text-lime-500">&</span>S</span>
+                            </div>
+                            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                                <button class="nav-btn active-nav border-b-4 border-lime-500 text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-bold uppercase tracking-wider" data-target="home-tab">Home</button>
+                                <button class="nav-btn border-b-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-bold uppercase tracking-wider transition-colors" data-target="budget-tab">Budgeting</button>
+                                <button class="nav-btn border-b-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-bold uppercase tracking-wider transition-colors" data-target="invest-tab">Investment Advice</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Profile & Logout -->
+                        <div class="flex items-center space-x-6">
+                            <button class="nav-btn border-b-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-bold uppercase tracking-wider transition-colors" data-target="profile-tab">Profile</button>
+                            <button id="logout-btn" class="bg-gray-900 text-white hover:bg-gray-800 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                
+                <!-- HOME TAB -->
+                <div id="home-tab" class="tab-content transition-opacity duration-300">
+                    <div class="bg-white border-2 border-lime-500 p-8 shadow-[8px_8px_0px_0px_rgba(132,204,22,1)] mb-8">
+                        <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tight">Hello, <span id="welcome-username" class="text-lime-500">User</span>!</h2>
+                        <p class="text-xl text-gray-600 mt-2 font-medium">Ready to save today..!!!</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="bg-white border-2 border-gray-200 p-6 shadow-[4px_4px_0px_0px_rgba(229,231,235,1)]">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Current Balance</h3>
+                            <p id="home-balance" class="text-3xl font-black text-gray-900">INR 0</p>
+                        </div>
+                        <div class="bg-white border-2 border-gray-200 p-6 shadow-[4px_4px_0px_0px_rgba(229,231,235,1)]">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Monthly Salary</h3>
+                            <p id="home-salary" class="text-3xl font-black text-lime-600">INR 0</p>
+                        </div>
+                        <div class="bg-white border-2 border-gray-200 p-6 shadow-[4px_4px_0px_0px_rgba(229,231,235,1)]">
+                            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Target Savings</h3>
+                            <p id="home-target" class="text-3xl font-black text-gray-900">INR 0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BUDGETING TAB -->
+                <div id="budget-tab" class="tab-content hidden transition-opacity duration-300">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        
+                        <!-- Log Transaction Form -->
+                        <div>
+                            <div class="bg-white border-2 border-gray-900 p-8 shadow-[8px_8px_0px_0px_rgba(17,24,39,1)]">
+                                <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-6 border-b-2 border-gray-200 pb-4">Log Expense / Income</h2>
+                                <form id="add-tx-form" class="space-y-5">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Description</label>
+                                        <input type="text" id="tx-desc" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-gray-900 focus:ring-0 outline-none transition-colors" required>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Amount (INR)</label>
+                                            <input type="number" id="tx-amount" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-gray-900 focus:ring-0 outline-none transition-colors" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Type</label>
+                                            <select id="tx-type" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-gray-900 focus:ring-0 outline-none transition-colors" required>
+                                                <option value="expense">Expense</option>
+                                                <option value="income">Income</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Category</label>
+                                        <input type="text" id="tx-category" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-gray-900 focus:ring-0 outline-none transition-colors" required placeholder="e.g. Food, Rent, Salary">
+                                    </div>
+                                    <button type="submit" class="w-full py-3 px-4 bg-gray-900 hover:bg-gray-800 text-white font-bold uppercase tracking-widest transition-colors mt-4">
+                                        Add Record
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Transaction List -->
+                            <div class="mt-8 bg-white border-2 border-gray-200 p-6">
+                                <h3 class="text-lg font-bold text-gray-900 uppercase mb-4">History</h3>
+                                <div class="overflow-y-auto max-h-64 border-2 border-gray-100 p-2" id="tx-list">
+                                    <p class="text-gray-500 text-sm text-center py-4">No records yet.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Area -->
+                        <div class="bg-white border-2 border-gray-200 p-8 flex flex-col items-center justify-center">
+                            <h2 class="text-xl font-bold text-gray-900 uppercase tracking-tight mb-8 w-full text-center border-b-2 border-gray-100 pb-4">Budgeting Overview</h2>
+                            <div class="w-full max-w-md relative pb-8">
+                                <canvas id="budgetChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INVESTMENT ADVICE TAB -->
+                <div id="invest-tab" class="tab-content hidden transition-opacity duration-300">
+                    
+                    <!-- Schemes 3-Column Layout -->
+                    <div class="bg-white border-2 border-gray-900 p-8 shadow-[8px_8px_0px_0px_rgba(17,24,39,1)] mb-12">
+                        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-6 border-b-2 border-gray-200 pb-4">Investment Options (2026 Rates)</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <!-- Column 1: Banks -->
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 uppercase tracking-widest mb-4 bg-gray-100 p-2 text-center border-2 border-gray-200">Bank Schemes</h3>
+                                <ul id="bank-schemes-list" class="space-y-3">
+                                    <li class="text-sm text-gray-500 font-medium">Loading...</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Column 2: Post Office -->
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 uppercase tracking-widest mb-4 bg-gray-100 p-2 text-center border-2 border-gray-200">Post Office</h3>
+                                <ul id="po-schemes-list" class="space-y-3">
+                                    <li class="text-sm text-gray-500 font-medium">Loading...</li>
+                                </ul>
+                            </div>
+
+                            <!-- Column 3: Markets -->
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 uppercase tracking-widest mb-4 bg-lime-100 p-2 text-center border-2 border-lime-500">Market Options</h3>
+                                <div class="flex flex-col space-y-4">
+                                    <button onclick="openMfModal()" class="w-full py-4 bg-white border-2 border-gray-900 hover:bg-gray-900 hover:text-white transition-colors font-bold uppercase flex flex-col items-center justify-center group shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+                                        <span class="text-xl mb-1 group-hover:text-lime-400">Mutual Funds</span>
+                                        <span class="text-xs text-gray-500 group-hover:text-gray-300">Live mfapi.in feed</span>
+                                    </button>
+                                    <button onclick="openStocksModal()" class="w-full py-4 bg-white border-2 border-gray-900 hover:bg-gray-900 hover:text-white transition-colors font-bold uppercase flex flex-col items-center justify-center group shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+                                        <span class="text-xl mb-1 group-hover:text-lime-400">Equity Stocks</span>
+                                        <span class="text-xs text-gray-500 group-hover:text-gray-300">Live indianapi.in feed</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Advisor & Calculator -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        <!-- Left: Input & Advice -->
+                        <div class="bg-white border-2 border-lime-500 p-8 shadow-[8px_8px_0px_0px_rgba(132,204,22,1)]">
+                            <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-2">AI Investment Advisor</h2>
+                            <p class="text-sm text-gray-600 font-medium mb-8">Set your goal and let LLM analyze the best scheme for you.</p>
+                            
+                            <form id="ai-form" class="space-y-6">
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Goal Amount (INR)</label>
+                                        <input type="number" id="ai-goal" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Tenure (Months)</label>
+                                        <input type="number" id="ai-tenure" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex justify-between items-end mb-4">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase">Select Risk Tolerance</label>
+                                        <span id="ai-dynamic-risk-tag" class="text-xs font-bold text-lime-600 bg-lime-100 px-2 py-1 border border-lime-300 hidden">AI Suggests this risk level for your goal plan</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-4" id="risk-selector">
+                                        <button type="button" id="risk-btn-low" class="risk-btn border-2 border-gray-300 py-3 font-bold uppercase tracking-wider text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors relative" data-risk="Low">Low</button>
+                                        <button type="button" id="risk-btn-medium" class="risk-btn border-2 border-gray-300 py-3 font-bold uppercase tracking-wider text-sm text-gray-600 hover:border-yellow-500 hover:text-yellow-600 transition-colors relative" data-risk="Medium">Medium</button>
+                                        <button type="button" id="risk-btn-high" class="risk-btn border-2 border-gray-300 py-3 font-bold uppercase tracking-wider text-sm text-gray-600 hover:border-red-500 hover:text-red-600 transition-colors relative" data-risk="High">High</button>
+                                    </div>
+                                    <input type="hidden" id="ai-risk" required>
+                                </div>
+
+                                <button type="submit" id="ai-submit-btn" class="w-full py-4 text-center bg-gray-900 hover:bg-black text-white font-bold uppercase tracking-widest transition-colors shadow-[4px_4px_0px_0px_rgba(132,204,22,1)] disabled:opacity-50">
+                                    Get AI Advice
+                                </button>
+                            </form>
+                            
+                            <div id="ai-advice-container" class="mt-8 hidden border-l-4 border-lime-500 pl-4 py-2 bg-gray-50">
+                                <p class="text-xs font-bold text-lime-600 uppercase tracking-widest mb-1">Recommended Scheme</p>
+                                <h3 id="ai-scheme-name" class="text-xl font-black text-gray-900 mb-1"></h3>
+                                <p id="ai-market-cap" class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-1 inline-block border border-indigo-300 mb-3 hidden"></p>
+                                <p id="ai-reasoning" class="text-sm text-gray-700 leading-relaxed font-medium"></p>
+                                <button type="button" id="auto-calc-btn" class="mt-4 text-sm font-bold text-lime-600 uppercase underline hover:text-lime-700 transition-colors">Calculate Compounding for this Scheme</button>
+                            </div>
+                        </div>
+
+                        <!-- Right: Calculator Result -->
+                        <div class="bg-gray-50 border-2 border-gray-200 p-8 flex flex-col justify-center items-center text-center">
+                            <h2 class="text-xl font-bold text-gray-400 uppercase tracking-tight mb-8 border-b-2 border-gray-200 pb-4 w-full">Calculator Compounding Result</h2>
+                            
+                            <div id="calc-result-container" class="hidden w-full space-y-6">
+                                <div class="bg-white border-2 border-gray-900 p-6">
+                                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Required Monthly Investment</p>
+                                    <p id="calc-res-monthly" class="text-4xl font-black text-gray-900">INR 0</p>
+                                </div>
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div class="bg-white border-2 border-gray-200 p-4">
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total Invested</p>
+                                        <p id="calc-res-invested" class="text-xl font-black text-gray-800">INR 0</p>
+                                    </div>
+                                    <div class="bg-white border-2 border-lime-500 p-4">
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total Returns</p>
+                                        <p id="calc-res-returns" class="text-xl font-black text-lime-600">INR 0</p>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-medium text-gray-500 mt-4">* Returns are approximate and subject to market/policy risks.</p>
+                            </div>
+
+                            <div id="calc-empty-state" class="text-gray-400 font-medium">
+                                Setup your goal and ask AI to calculate your returns!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE TAB -->
+                <div id="profile-tab" class="tab-content hidden transition-opacity duration-300">
+                    <div class="bg-white border-2 border-gray-900 p-8 shadow-[8px_8px_0px_0px_rgba(17,24,39,1)] max-w-xl mx-auto">
+                        <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-6 border-b-2 border-gray-200 pb-4">Profile Settings</h2>
+                        
+                        <form id="profile-form" class="space-y-6">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Username</label>
+                                <input type="text" id="prof-username" class="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 focus:outline-none text-gray-500 font-bold" disabled>
+                                <p class="text-xs text-gray-400 mt-1">Username cannot be changed.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Monthly Salary (INR)</label>
+                                <input type="number" id="prof-salary" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Target Savings (INR)</label>
+                                <input type="number" id="prof-savings" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase mb-2">New Password (Leave blank to keep current)</label>
+                                <input type="password" id="prof-password" class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-300 focus:border-lime-500 focus:ring-0 outline-none transition-colors">
+                            </div>
+                            
+                            <button type="submit" class="w-full py-4 text-center bg-lime-500 hover:bg-lime-600 text-white font-bold uppercase tracking-widest transition-colors shadow-[4px_4px_0px_0px_rgba(17,24,39,1)]">
+                                Update Profile
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MF API Modal -->
+    <div id="mf-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-gray-900 bg-opacity-80 backdrop-blur-md p-4">
+        <div class="modal-slide-down bg-white border-2 border-lime-500 shadow-[8px_8px_0px_0px_rgba(132,204,22,1)] w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="p-6 border-b-2 border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                <h2 class="text-xl font-black uppercase tracking-tight text-gray-900">Live Mutual Funds Data</h2>
+                <button onclick="closeModal('mf-modal')" class="text-gray-500 hover:text-red-500 text-2xl font-black">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <p class="text-sm text-gray-600 mb-4 font-bold">Top Performing Mutual Funds (Data via mfapi.in)</p>
+                <div id="mf-list" class="space-y-3">
+                    <p class="text-center font-bold text-gray-400 py-4">Fetching live MF data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stocks API Modal -->
+    <div id="stocks-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-gray-900 bg-opacity-80 backdrop-blur-md p-4">
+        <div class="modal-slide-down bg-white border-2 border-lime-500 shadow-[8px_8px_0px_0px_rgba(132,204,22,1)] w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="p-6 border-b-2 border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+                <h2 class="text-xl font-black uppercase tracking-tight text-gray-900">Live Indian Stocks</h2>
+                <button onclick="closeModal('stocks-modal')" class="text-gray-500 hover:text-red-500 text-2xl font-black">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <p class="text-sm text-gray-600 mb-4 font-bold">Live Nifty 50/Bluechip Stocks (Data via indianapi.in mock/public endpoint)</p>
+                <div id="stocks-list" class="grid grid-cols-2 gap-4">
+                    <p class="text-center font-bold text-gray-400 py-4 col-span-2">Fetching live stocks data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

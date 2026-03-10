@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background-color: #ffffff;
+    color: #111827;
+}
+
+/* Base custom styles to ensure no rounded corners leak through from external libs */
+* {
+    border-radius: 0 !important;
+}
+
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
